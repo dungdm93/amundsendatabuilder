@@ -26,23 +26,29 @@ class MysqlMetadataExtractor(Extractor):
     # SELECT statement from mysql information_schema to extract table and column metadata
     SQL_STATEMENT = """
         SELECT
-        lower(c.column_name) AS col_name,
-        c.column_comment AS col_description,
-        lower(c.data_type) AS col_type,
-        lower(c.ordinal_position) AS col_sort_order,
-        {cluster_source} AS cluster,
-        lower(c.table_schema) AS "schema",
-        lower(c.table_name) AS name,
-        t.table_comment AS description,
-        case when lower(t.table_type) = "view" then "true" else "false" end AS is_view
+            lower(c.COLUMN_NAME) AS col_name,
+            c.COLUMN_COMMENT AS col_description,
+            lower(c.DATA_TYPE) AS col_type,
+            lower(c.ORDINAL_POSITION) AS col_sort_order,
+            {cluster_source} AS cluster,
+            lower(c.TABLE_SCHEMA) AS "schema",
+            lower(c.TABLE_NAME) AS name,
+            t.TABLE_COMMENT AS description,
+            CASE WHEN lower(t.TABLE_TYPE) = "view" 
+                THEN "true"
+                ELSE "false"
+            END AS is_view
         FROM
-        INFORMATION_SCHEMA.COLUMNS AS c
-        LEFT JOIN
-        INFORMATION_SCHEMA.TABLES t
-            ON c.TABLE_NAME = t.TABLE_NAME
+            INFORMATION_SCHEMA.COLUMNS AS c
+        LEFT JOIN INFORMATION_SCHEMA.TABLES t 
+            ON	c.TABLE_NAME = t.TABLE_NAME
             AND c.TABLE_SCHEMA = t.TABLE_SCHEMA
         {where_clause_suffix}
-        ORDER by cluster, "schema", name, col_sort_order ;
+        ORDER BY
+            cluster,
+            "schema",
+            name,
+            col_sort_order;
     """
 
     # CONFIG KEYS
@@ -60,10 +66,10 @@ class MysqlMetadataExtractor(Extractor):
 
     def init(self, conf: ConfigTree) -> None:
         conf = conf.with_fallback(MysqlMetadataExtractor.DEFAULT_CONFIG)
-        self._cluster = '{}'.format(conf.get_string(MysqlMetadataExtractor.CLUSTER_KEY))
+        self._cluster = conf.get_string(MysqlMetadataExtractor.CLUSTER_KEY)
 
         if conf.get_bool(MysqlMetadataExtractor.USE_CATALOG_AS_CLUSTER_NAME):
-            cluster_source = "c.table_catalog"
+            cluster_source = "c.TABLE_SCHEMA"
         else:
             cluster_source = "'{}'".format(self._cluster)
 
